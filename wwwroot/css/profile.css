@@ -1,0 +1,23 @@
+
+
+.user-profile-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    vertical-align: baseline;
+    border: 1pt solid #fff;
+    background-color: #5577ee;
+    color: #fff;
+    box-shadow: 1px 1px 5px #00000040;
+    border-radius: 50%;
+    transition: all 150ms;
+}
+
+
+.user-profile-btn:hover {
+    box-shadow: 1px 1px 10px #00000080;
+    background-color: color-mix(in srgb, #5577ee 30%, #fff 70%);
+}

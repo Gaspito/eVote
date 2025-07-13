@@ -1,0 +1,107 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<link rel="stylesheet" href="~/css/modal.css" asp-append-version="true" >
+<link rel="stylesheet" href="~/css/votes.css" asp-append-version="true" >
+
+<div class="bg bg-cover bg-anim-1"></div>
+
+<div class="flex-row flex-wrap">
+
+    <aside id="dashboard-voter" class="glass-box flex-grow flex-column">
+        @if (User.IsInRole("Voter")) {
+            <div class="flex-row flex-wrap align-c">
+                <h4>Your Votes</h4>
+                <button class="btn btn-refresh" onclick="refreshVotesList('#votes', {button: this})" title="Refresh">
+                    <img src="~/images/refresh.svg" class="icon-s">
+                </button>
+            </div>
+            <div class="flex-grow flex-column" style="gap: 0;">
+                <div class="candidates-list-header" style="margin-left: 15px; padding-right: 105px;">
+                    <span>Name</span>
+                    <span></span>
+                </div>
+                <div class="flex-grow" style="min-height: 200px; max-height: 55vh; overflow-y: scroll; padding: 1rem;">
+                    <ul id="votes" class="candidates">
+                        <li class="candidate placeholder"></li>
+                        <li class="candidate placeholder"></li>
+                        <li class="candidate placeholder"></li>
+                        <li class="candidate placeholder"></li>
+                        <li class="candidate placeholder"></li>
+                    </ul>
+                </div>
+            </div>
+            <p>Welcome, <strong>@ViewBag.UserEmail</strong> <br> You are registered as a Voter. You have <span id="remaining-vote-count"></span>/<span id="max-vote-count"></span> votes left to cast.</p>
+            <button class="btn btn-primary" onclick="registerAsCandidate()">Register as Candidate</button>
+        }
+        else if (User.IsInRole("Candidate")) {
+            <h4>Your Votes</h4>
+            <p class="vote-count-big">
+                <span id="candidate-votes">0</span>
+            </p>
+            <p>Welcome, <strong>@ViewBag.UserEmail</strong> <br> You are registered as a Candidate.</p>
+            <button class="btn btn-danger" onclick="registerAsVoter()">Register as Voter</button>
+        }
+        else if (User.IsInRole("Admin")) {
+            <h4>Welcome, Admin</h4>
+            <button class="btn btn-primary" onclick="requestFinalVoteCount('#dashboard-candidates', {button: this})">Request Final Vote Count</button>
+        }
+        else {
+            <p>Your are not logged in. Please log in to join the vote.</p>
+        }
+    </aside>
+
+    <aside  class="glass-box flex-grow flex-column">
+        <div class="flex-row flex-wrap align-c">
+            <h4>Candidates</h4>
+            <button class="btn btn-refresh" onclick="refreshCandidateList('#dashboard-candidates', {button: this})"  title="Refresh">
+                <img src="~/images/refresh.svg" class="icon-s">
+            </button>
+        </div>
+        <div class="flex-grow flex-column" style="gap: 0;">
+            <div class="candidates-list-header" style="margin-left: 15px; padding-right: 105px;">
+                <span>Name</span>
+                <span>Votes</span>
+            </div>
+            <div class="flex-grow" style="min-height: 300px; max-height: 55vh; overflow-y: scroll; padding: 1rem;">
+                <ul id="dashboard-candidates" class="candidates">
+                    <li class="candidate placeholder"></li>
+                    <li class="candidate placeholder"></li>
+                    <li class="candidate placeholder"></li>
+                    <li class="candidate placeholder"></li>
+                    <li class="candidate placeholder"></li>
+                </ul>
+            </div>
+        </div>
+    </aside>
+
+</div>
+
+<script>
+    // Store basic user info so that scripts can adapt the layout of generate items
+    window.userId = "@ViewBag.UserId";
+    window.userEmail = "@ViewBag.UserEmail";
+    window.userRole = "@ViewBag.UserRole";
+    // Note: even tempered with, these values cannot cause problems to the app itself,
+    // as everything is validated server side.
+</script>
+
+<script src="~/js/modal.js" asp-append-version="true"></script>
+<script src="~/js/candidate-list.js" asp-append-version="true"></script>
+<script src="~/js/votes-list.js" asp-append-version="true"></script>
+<script src="~/js/particles.js" asp-append-version="true"></script>
+
+<script>
+    // Initial refresh of votes and candidates
+    refreshCandidateList("#dashboard-candidates");
+    refreshVotesList("#votes",{remaining: "#remaining-vote-count", total: "#max-vote-count"});
+    refreshCurrentVotes("#candidate-votes");
+
+    // Refresh the votes count every 5 seconds
+    window.voteRefreshInterval = setInterval(() => {
+        refreshCandidateList("#dashboard-candidates");
+        refreshVotesList("#votes",{remaining: "#remaining-vote-count", total: "#max-vote-count"});
+        refreshCurrentVotes("#candidate-votes");
+    }, 5000);
+</script>

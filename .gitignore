@@ -1,0 +1,72 @@
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+
+# Rider settings
+.idea/
+
+# Visual Studio Code settings
+.vscode/
+
+# ASP.NET Core secrets
+**/secrets.json
+
+# Entity Framework Migrations
+Migrations/
+
+# SQLite database
+VotingApp.db
+
+# Configuration files
+appsettings.Development.json
+appsettings.Local.json
+
+# Logs
+*.log
+
+# Package directories
+node_modules/
+bower_components/
+
+# Environment files
+.env
+
+# Published files
+wwwroot/lib/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Resharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# NuGet packages
+*.nupkg
+packages/
+project.lock.json
+
+# Backup and crash report files
+*.bak
+*.swp
+*.orig
+
+# Build artifacts
+*.dll
+*.exe
+*.pdb
+*.cache
+*.manifest
+
+# Coverage results
+coverage/
+*.coverage
+*.coveragexml
+
+# JetBrains Rider
+.idea/
