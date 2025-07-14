@@ -17,10 +17,12 @@ public interface IRabbitMqConnection : IDisposable
 /// </summary>
 public class RabbitMqConnection : IRabbitMqConnection
 {
+    private readonly ILogger<RabbitMqConnection> _logger;
     private IConnection? _connection;
 
-    public RabbitMqConnection(IConfiguration config)
+    public RabbitMqConnection(ILogger<RabbitMqConnection> logger, IConfiguration config)
     {
+        _logger = logger;
         SetupConnection(config).Wait();
     }
 
@@ -36,6 +38,7 @@ public class RabbitMqConnection : IRabbitMqConnection
             Password = config["RabbitMq:Password"],
         };
         _connection = await factory.CreateConnectionAsync();
+        _logger.LogInformation("Connection to RabbitMq Established");
         return 0;
     }
 
@@ -55,6 +58,7 @@ public class RabbitMqConnection : IRabbitMqConnection
         if (connection == null) return 1;
         await connection.CloseAsync();
         await connection.DisposeAsync();
+        _logger.LogInformation("Connection to RabbitMq Closed");
         return 0;
     }
 }

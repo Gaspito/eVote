@@ -23,6 +23,7 @@ public static class RoleSeeder
             if (!await roleManager.RoleExistsAsync(role))
             {
                 await roleManager.CreateAsync(new IdentityRole(role));
+                Console.WriteLine($"Seeded Role {role} in the database");
             }
         }
     }
