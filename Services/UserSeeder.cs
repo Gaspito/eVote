@@ -33,6 +33,8 @@ public static class UserSeeder
 
             await userManager.CreateAsync(user, adminPassword);
             await userManager.AddToRoleAsync(user, "Admin");
+
+            Console.WriteLine("Seeded Admin user into the database");
         }
 
     }
@@ -68,6 +70,8 @@ public static class UserSeeder
 
                     await userManager.CreateAsync(user, "Test123!");
                     await userManager.AddToRoleAsync(user, role);
+
+                    Console.WriteLine($"Seeded test user {email} (Role: {role}) into the database");
                 }
             }
         }

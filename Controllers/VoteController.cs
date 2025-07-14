@@ -12,7 +12,7 @@ namespace VotingApp.Web.Controllers;
 
 public class VoteController : Controller
 {
-    private readonly ILogger<HomeController> _logger;
+    private readonly ILogger<VoteController> _logger;
     private readonly AppDbContext _dbContext;
     private readonly UserManager<AppUser> _userManager;
     private readonly SignInManager<AppUser> _signInManager;
@@ -22,7 +22,7 @@ public class VoteController : Controller
 
     private readonly int _userVoteLimit;
 
-    public VoteController(IConfiguration config, ILogger<HomeController> logger, AppDbContext dbContext, UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IVoteService voteService, IRoleService roleService)
+    public VoteController(IConfiguration config, ILogger<VoteController> logger, AppDbContext dbContext, UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IVoteService voteService, IRoleService roleService)
     {
         _userVoteLimit = config.GetValue<int>("ServiceConfig:CastVoteLimit");
         _logger = logger;

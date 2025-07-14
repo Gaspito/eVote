@@ -16,15 +16,17 @@ using VotingApp.Web.Models;
 /// </summary>
 public class VoteQueueConsumer : BackgroundService
 {
+    private readonly ILogger<VoteQueueConsumer> _logger;
     private readonly IRabbitMqConnection _connection;
     private readonly IServiceProvider _services;
     private IChannel? _channel;
 
     private readonly int _userMaxVoteCount;
 
-    public VoteQueueConsumer(IConfiguration config, IRabbitMqConnection connection,
-                             IServiceProvider services)
+    public VoteQueueConsumer(ILogger<VoteQueueConsumer>logger, IConfiguration config,
+                            IRabbitMqConnection connection, IServiceProvider services)
     {
+        _logger = logger;
         _userMaxVoteCount = config.GetValue<int>("ServiceConfig:CastVoteLimit");
         _connection = connection;
         _services = services;
@@ -50,6 +52,8 @@ public class VoteQueueConsumer : BackgroundService
         consumer.ReceivedAsync += async (model, ea) => await HandleVoteAsync(ea);
 
         await _channel.BasicConsumeAsync("vote-queue", false, consumer);
+
+        _logger.LogInformation("New RabbitMq channel created, listening to queue 'vote-queue'");
     }
 
     /// <summary>
@@ -142,23 +146,37 @@ public class VoteQueueConsumer : BackgroundService
         // ReadCommitted isolation level is set here to guard against logical errors and concurrent processing bugs
         using (var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted))
         {
+            _logger.LogInformation($"Adding vote from {voterEmail} to {candidateEmail}");
+
             // Get the candidate by email
             var candidate = await _dbContext.Users.FirstOrDefaultAsync(i => i.Email == candidateEmail);
             if (candidate == null)
+            {
+                _logger.LogError($"User {candidateEmail} not found");
                 return new VoteResponseMessage { Status = "Failed", Message = "Candidate not found" };
+            }
 
             // Check if the candidate is indeed a candidate
             if (!await _userManager.IsInRoleAsync(candidate, "Candidate"))
+            {
+                _logger.LogError($"User {candidateEmail} is not a Candidate");
                 return new VoteResponseMessage { Status = "Failed", Message = "User is not a candidate" };
+            }
 
             // Get voter by email
             var voter = await _dbContext.Users.FirstOrDefaultAsync(i => i.Email == voterEmail);
             if (voter == null)
+            {
+                _logger.LogError($"User {voterEmail} not found");
                 return new VoteResponseMessage { Status = "Failed", Message = "Voter not found" };
+            }
 
             // Check if the voter is indeed a voter
             if (!await _userManager.IsInRoleAsync(voter, "Voter"))
+            {
+                _logger.LogError($"User {voterEmail} is not a Voter");
                 return new VoteResponseMessage { Status = "Failed", Message = "User is not a voter" };
+            }
 
             // Get the voter's votes
             var votes = await _dbContext.VoteTokens
@@ -167,11 +185,17 @@ public class VoteQueueConsumer : BackgroundService
 
             // Check if the vote limit was reached
             if (votes.Count >= _userMaxVoteCount)
+            {
+                _logger.LogError($"User {voterEmail} has reached their vote limit");
                 return new VoteResponseMessage { Status = "Failed", Message = "Vote limit reached" };
+            }
 
             // Check if the voter already voted for that candidate
             if (votes.Any(i => i.CandidateId == candidate.Id))
+            {
+                _logger.LogError($"User {voterEmail} already voted for {candidateEmail}");
                 return new VoteResponseMessage { Status = "Failed", Message = "Already voted for that candidate" };
+            }
 
             // Add a vote
             var vote = new VoteToken();
@@ -190,6 +214,8 @@ public class VoteQueueConsumer : BackgroundService
             await _dbContext.SaveChangesAsync();
 
             await transaction.CommitAsync();
+
+            _logger.LogInformation($"Vote added from {voterEmail} to {candidateEmail}");
         }
         return new VoteResponseMessage { Status = "Success", Message = "Vote Added" };
     }
@@ -205,23 +231,37 @@ public class VoteQueueConsumer : BackgroundService
         // ReadCommitted isolation level is set here to guard against logical errors and concurrent processing bugs
         using (var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted))
         {
+            _logger.LogInformation($"Removing vote from {voterEmail} to {candidateEmail}");
+
             // Get the candidate by email
             var candidate = await _dbContext.Users.FirstOrDefaultAsync(i => i.Email == candidateEmail);
             if (candidate == null)
+            {
+                _logger.LogError($"User {candidateEmail} not found");
                 return new VoteResponseMessage { Status = "Failed", Message = "Candidate not found" };
+            }
 
             // Check if the candidate is indeed a candidate
             if (!await _userManager.IsInRoleAsync(candidate, "Candidate"))
+            {
+                _logger.LogError($"User {candidateEmail} is not a Candidate");
                 return new VoteResponseMessage { Status = "Failed", Message = "User is not a candidate" };
+            }
 
             // Get voter by email
             var voter = await _dbContext.Users.FirstOrDefaultAsync(i => i.Email == voterEmail);
             if (voter == null)
+            {
+                _logger.LogError($"User {voterEmail} not found");
                 return new VoteResponseMessage { Status = "Failed", Message = "Voter not found" };
+            }
 
             // Check if the voter is indeed a voter
             if (!await _userManager.IsInRoleAsync(voter, "Voter"))
+            {
+                _logger.LogError($"User {voterEmail} is not a Voter");
                 return new VoteResponseMessage { Status = "Failed", Message = "User is not a voter" };
+            }
 
             // Find the vote
             var vote = await _dbContext.VoteTokens
@@ -229,7 +269,10 @@ public class VoteQueueConsumer : BackgroundService
 
             // Check if the vote exists
             if (vote == null)
+            {
+                _logger.LogError($"No vote from {voterEmail} to {candidateEmail} was found");
                 return new VoteResponseMessage { Status = "Failed", Message = "Vote not found" };
+            }
 
             // Remove the vote
             _dbContext.VoteTokens.Remove(vote);
@@ -244,6 +287,8 @@ public class VoteQueueConsumer : BackgroundService
             await _dbContext.SaveChangesAsync();
 
             await transaction.CommitAsync();
+
+            _logger.LogInformation($"Vote removed from {voterEmail} to {candidateEmail}");
         }
         return new VoteResponseMessage { Status = "Success", Message = "Vote removed" };
     }
@@ -258,10 +303,15 @@ public class VoteQueueConsumer : BackgroundService
         // ReadCommitted isolation level is set here to guard against logical errors and concurrent processing bugs
         using (var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted))
         {
+            _logger.LogInformation($"Switching user {userEmail} to Candidate");
+
             // Find the user by email
             var voter = await _userManager.FindByEmailAsync(userEmail);
             if (voter == null)
+            {
+                _logger.LogError($"User {userEmail} not found");
                 return new VoteResponseMessage { Status = "Failed", Message = "User not found" };
+            }
             var voterId = voter.Id;
 
             // Check if the user has any cast votes
@@ -269,7 +319,10 @@ public class VoteQueueConsumer : BackgroundService
                 .AnyAsync(i => i.VoterId == voterId);
 
             if (anyVotes)
+            {
+                _logger.LogError($"User {userEmail} does not have a vote count of 0");
                 return new VoteResponseMessage { Status = "Failed", Message = "User has active votes. Remove them before attempting to switch to a candidate." };
+            }
 
             // Reset the voter's cached vote count
             voter.VoteCount = 0;
@@ -282,7 +335,7 @@ public class VoteQueueConsumer : BackgroundService
 
             await transaction.CommitAsync();
 
-            Console.WriteLine($"Switched user {voter.Email} to Candidate");
+            _logger.LogInformation($"Switched user {voter.Email} to Candidate");
         }
         return new VoteResponseMessage { Status = "Success", Message = "User became a Candidate" };
     }
@@ -298,10 +351,15 @@ public class VoteQueueConsumer : BackgroundService
         // ReadCommitted isolation level is set here to guard against logical errors and concurrent processing bugs
         using (var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted))
         {
+            _logger.LogInformation($"Switching user {userEmail} to Voter");
+
             // Find candidate by email
             var candidate = await _userManager.FindByEmailAsync(userEmail);
             if (candidate == null)
+            {
+                _logger.LogError($"User {userEmail} not found");
                 return new VoteResponseMessage { Status = "Failed", Message = "User not found" };
+            }
             var candidateId = candidate.Id;
 
             // Check if the candidate has any votes for them
@@ -309,7 +367,10 @@ public class VoteQueueConsumer : BackgroundService
                 .AnyAsync(i => i.CandidateId == candidateId);
 
             if (anyVotes)
+            {
+                _logger.LogError($"User {userEmail} does not have a vote count of 0");
                 return new VoteResponseMessage { Status = "Failed", Message = "User has votes for them" };
+            }
 
             // Update the cached vote count
             candidate.VoteCount = 0;
@@ -321,6 +382,8 @@ public class VoteQueueConsumer : BackgroundService
             await _dbContext.SaveChangesAsync();
 
             await transaction.CommitAsync();
+
+            _logger.LogInformation($"Switched user {userEmail} to Voter");
         }
         return new VoteResponseMessage { Status = "Success", Message = "User became a Voter" };
     }
